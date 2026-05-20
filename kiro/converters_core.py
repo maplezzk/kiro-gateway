@@ -1474,9 +1474,14 @@ def build_kiro_payload(
     # This must happen BEFORE ensure_alternating_roles() so that consecutive
     # messages with unknown roles (e.g., 'developer') are properly detected
     merged_messages = normalize_message_roles(merged_messages)
-    
+
+    # Re-merge after role normalization: converting unknown roles (e.g., 'developer', 'system')
+    # to 'user' can produce new consecutive user messages that weren't caught by the first merge.
+    # Merging here avoids inserting synthetic assistant placeholders in the next step.
+    merged_messages = merge_adjacent_messages(merged_messages)
+
     # Ensure alternating user/assistant roles (fixes issue #64)
-    # Insert synthetic assistant messages between consecutive user messages
+    # This is now a true last-resort fallback; most cases are handled by the merge above.
     merged_messages = ensure_alternating_roles(merged_messages)
     
     if not merged_messages:
