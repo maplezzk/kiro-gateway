@@ -44,8 +44,7 @@ services:
     
     volumes:
       # Mount credentials file (if using KIRO_CREDS_FILE)
-      # Uncomment and adjust path as needed:
-      # - ~/.aws/sso/cache:/home/kiro/.aws/sso/cache:ro
+      - ~/.aws/sso/cache:/home/kiro/.aws/sso/cache:ro
       
       # Mount kiro-cli database (if using KIRO_CLI_DB_FILE)
       # Uncomment and adjust path as needed:
