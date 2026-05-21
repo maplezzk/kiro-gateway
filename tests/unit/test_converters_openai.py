@@ -753,7 +753,7 @@ class TestBuildKiroPayload:
         
         print(f"Result: {result}")
         current_content = result["conversationState"]["currentMessage"]["userInputMessage"]["content"]
-        assert current_content == "(empty placeholder)"
+        assert current_content == ""
     
     def test_raises_for_empty_messages(self):
         """
@@ -791,7 +791,7 @@ class TestBuildKiroPayload:
 
         print(f"Result: {result}")
         current_content = result["conversationState"]["currentMessage"]["userInputMessage"]["content"]
-        assert current_content == "(empty placeholder)"
+        assert current_content == ""
     
     def test_normalizes_model_id_correctly(self):
         """
