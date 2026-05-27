@@ -1193,7 +1193,7 @@ def ensure_first_message_is_user(messages: List[UnifiedMessage]) -> List[Unified
         # Minimal synthetic user message to satisfy Kiro API's "first message must be user" requirement
         synthetic_user = UnifiedMessage(
             role="user",
-            content=""
+            content="请继续你的工作，如果已经完成，请简单汇报结果"
         )
         
         return [synthetic_user] + messages
@@ -1300,7 +1300,7 @@ def ensure_alternating_roles(messages: List[UnifiedMessage]) -> List[UnifiedMess
         if msg.role == "user" and prev_role == "user":
             synthetic_assistant = UnifiedMessage(
                 role="assistant",
-                content=""
+                content="请继续你的工作，如果已经完成，请简单汇报结果"
             )
             result.append(synthetic_assistant)
             synthetic_count += 1
@@ -1495,6 +1495,11 @@ def build_kiro_payload(
     current_message = merged_messages[-1]
     current_content = extract_text_content(current_message.content)
     
+    # If current message has tool_results but no text content,
+    # use prompt text so the AI doesn't see an empty user message
+    if not current_content and current_message.tool_results:
+        current_content = "请继续你的工作，如果已经完成，请简单汇报结果"
+    
     # If system prompt exists but history is empty - add to current message
     if full_system_prompt and not history:
         current_content = f"{full_system_prompt}\n\n{current_content}"
@@ -1507,7 +1512,7 @@ def build_kiro_payload(
                 "content": current_content
             }
         })
-        current_content = ""
+        current_content = "请继续你的工作，如果已经完成，请简单汇报结果"
     
     # Content may be empty (e.g., tool-only messages) - Kiro API should accept this
     # If not, we'll get a clear error to debug

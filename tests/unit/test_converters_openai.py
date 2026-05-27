@@ -753,7 +753,7 @@ class TestBuildKiroPayload:
         
         print(f"Result: {result}")
         current_content = result["conversationState"]["currentMessage"]["userInputMessage"]["content"]
-        assert current_content == ""
+        assert current_content == "请继续你的工作，如果已经完成，请简单汇报结果"
     
     def test_raises_for_empty_messages(self):
         """
