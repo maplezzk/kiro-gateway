@@ -1496,9 +1496,11 @@ def build_kiro_payload(
     current_content = extract_text_content(current_message.content)
     
     # If current message has tool_results but no text content,
-    # use prompt text so the AI doesn't see an empty user message
+    # allow empty content so Kiro API receives the tool results without
+    # synthetic prompt interference. Real Kiro IDE traffic uses content=""
+    # in this exact case and the model responds based on toolResults context.
     if not current_content and current_message.tool_results:
-        current_content = "请继续你的工作，如果已经完成，请简单汇报结果"
+        current_content = ""
     
     # If system prompt exists but history is empty - add to current message
     if full_system_prompt and not history:

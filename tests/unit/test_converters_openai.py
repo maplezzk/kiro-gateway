@@ -1327,7 +1327,66 @@ class TestBuildKiroPayloadToolCallsIntegration:
         print(f"ToolResult IDs: {tool_result_ids}")
         assert "tooluse_first" in tool_result_ids
         assert "tooluse_second" in tool_result_ids
-    
+
+    def test_tool_results_without_user_text_use_empty_content(self):
+        """
+        What it does: Verifies tool results at the end produce empty current content.
+        Purpose: Avoid injecting synthetic prompts that steer model behavior.
+
+        Real Kiro IDE traffic sends userInputMessage with content="" when the
+        current turn only delivers toolResults. The gateway should preserve this
+        transparent behavior instead of adding a placeholder like "请继续...".
+        """
+        print("Setup: Assistant tool_call followed by role=tool, no final user text...")
+        request = ChatCompletionRequest(
+            model="claude-sonnet-4-5",
+            messages=[
+                ChatMessage(role="user", content="Run a command"),
+                ChatMessage(
+                    role="assistant",
+                    content=None,
+                    tool_calls=[{
+                        "id": "tooluse_shell",
+                        "type": "function",
+                        "function": {"name": "shell", "arguments": '{"command": ["ls"]}'}
+                    }]
+                ),
+                ChatMessage(role="tool", content="file1.txt\nfile2.txt", tool_call_id="tooluse_shell")
+            ],
+            tools=[
+                Tool(
+                    type="function",
+                    function=ToolFunction(
+                        name="shell",
+                        description="Run a shell command",
+                        parameters={"type": "object", "properties": {"command": {"type": "array"}}}
+                    )
+                )
+            ]
+        )
+
+        print("Action: Building Kiro payload (with fake reasoning and truncation recovery disabled)...")
+        with patch('kiro.converters_core.FAKE_REASONING_ENABLED', False):
+            with patch('kiro.config.TRUNCATION_RECOVERY', False):
+                result = build_kiro_payload(request, "conv-123", "arn:aws:test")
+
+        print(f"Result: {result}")
+
+        current_msg = result["conversationState"]["currentMessage"]["userInputMessage"]
+        context = current_msg.get("userInputMessageContext", {})
+        tool_results = context.get("toolResults", [])
+        current_content = current_msg.get("content", "")
+
+        print(f"Current content: {current_content!r}")
+        print(f"ToolResults count: {len(tool_results)}")
+
+        assert current_content == "", (
+            f"Expected empty current content when only tool results are present, "
+            f"got {current_content!r}"
+        )
+        assert len(tool_results) == 1, f"Should have 1 toolResult, got {len(tool_results)}"
+        assert tool_results[0]["toolUseId"] == "tooluse_shell"
+
     def test_long_tool_description_added_to_system_prompt(self):
         """
         What it does: Verifies integration of long tool descriptions into payload.
