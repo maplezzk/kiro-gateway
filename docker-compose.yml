@@ -44,20 +44,24 @@ services:
     
     volumes:
       # Mount credentials file (if using KIRO_CREDS_FILE)
-      - ~/.aws/sso/cache:/home/kiro/.aws/sso/cache:ro
-      
+      # KIRO_SSO_CACHE_HOST_DIR points to the host directory containing the
+      # kiro-auth-token.json file referenced by KIRO_CREDS_FILE. Default is
+      # the standard AWS CLI SSO cache location. Override in .env per instance
+      # to point at a different user's credentials directory.
+      - ${KIRO_SSO_CACHE_HOST_DIR:-${HOME}/.aws/sso/cache}:/home/kiro/.aws/sso/cache:ro
+
       # Mount kiro-cli database (if using KIRO_CLI_DB_FILE)
       # Uncomment and adjust path as needed:
-      # - ~/.local/share/kiro-cli:/home/kiro/.local/share/kiro-cli  # Linux/macOS
-      
+      # - ${KIRO_CLI_DB_HOST_DIR:-~/.local/share/kiro-cli}:/home/kiro/.local/share/kiro-cli  # Linux/macOS
+
       # Mount debug logs directory (optional, for debugging)
-      - ./debug_logs:/app/debug_logs
-    
+      - ${KIRO_DEBUG_LOGS_HOST_DIR:-./debug_logs}:/app/debug_logs
+
     restart: unless-stopped
-    
+
     # Health check
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=5)"]
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:${SERVER_PORT:-8000}/health', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3
