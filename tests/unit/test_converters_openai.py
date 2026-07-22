@@ -737,7 +737,7 @@ class TestBuildKiroPayload:
     def test_handles_assistant_as_last_message(self):
         """
         What it does: Verifies handling of assistant as last message.
-        Purpose: Ensure "(empty placeholder)" message is created.
+        Purpose: Ensure minimal "." placeholder is used (no directive injection).
         """
         print("Setup: Request with assistant at the end...")
         request = ChatCompletionRequest(
@@ -747,13 +747,15 @@ class TestBuildKiroPayload:
                 ChatMessage(role="assistant", content="Hi there")
             ]
         )
-        
+
         print("Action: Building payload...")
         result = build_kiro_payload(request, "conv-123", "")
-        
+
         print(f"Result: {result}")
         current_content = result["conversationState"]["currentMessage"]["userInputMessage"]["content"]
-        assert current_content == "请继续你的工作，如果已经完成，请简单汇报结果"
+        # "." is used instead of a Chinese directive prompt so the model
+        # doesn't interpret the placeholder as an instruction to repeat.
+        assert current_content == "."
     
     def test_raises_for_empty_messages(self):
         """
@@ -1328,14 +1330,18 @@ class TestBuildKiroPayloadToolCallsIntegration:
         assert "tooluse_first" in tool_result_ids
         assert "tooluse_second" in tool_result_ids
 
-    def test_tool_results_without_user_text_use_empty_content(self):
+    def test_tool_results_without_user_text_use_minimal_dot_content(self):
         """
-        What it does: Verifies tool results at the end produce empty current content.
+        What it does: Verifies tool results at the end produce minimal "." content.
         Purpose: Avoid injecting synthetic prompts that steer model behavior.
 
-        Real Kiro IDE traffic sends userInputMessage with content="" when the
-        current turn only delivers toolResults. The gateway should preserve this
-        transparent behavior instead of adding a placeholder like "请继续...".
+        Earlier the gateway injected the Chinese directive "请继续你的工作..." here,
+        which caused the model to keep "responding" to the directive in subsequent
+        turns instead of to the user's actual messages. We now use "." as a
+        minimal non-directive placeholder; real Kiro IDE traffic in this case
+        uses content="" but we keep "." to be consistent with other synthetic
+        user messages and to avoid the "AI keeps replying to a previous message"
+        loop the Chinese prompt caused.
         """
         print("Setup: Assistant tool_call followed by role=tool, no final user text...")
         request = ChatCompletionRequest(
@@ -1380,8 +1386,8 @@ class TestBuildKiroPayloadToolCallsIntegration:
         print(f"Current content: {current_content!r}")
         print(f"ToolResults count: {len(tool_results)}")
 
-        assert current_content == "", (
-            f"Expected empty current content when only tool results are present, "
+        assert current_content == ".", (
+            f"Expected minimal '.' content when only tool results are present, "
             f"got {current_content!r}"
         )
         assert len(tool_results) == 1, f"Should have 1 toolResult, got {len(tool_results)}"

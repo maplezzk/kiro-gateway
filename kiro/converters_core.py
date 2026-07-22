@@ -1179,7 +1179,7 @@ def ensure_first_message_is_user(messages: List[UnifiedMessage]) -> List[Unified
         >>> result[0].role
         'user'
         >>> result[0].content
-        '(empty placeholder)'
+        '.'
     """
     if not messages:
         return messages
@@ -1189,11 +1189,11 @@ def ensure_first_message_is_user(messages: List[UnifiedMessage]) -> List[Unified
             f"First message is '{messages[0].role}', prepending synthetic user message "
             f"(Kiro API requires conversations to start with user)"
         )
-        # Create minimal synthetic user message (matches LiteLLM behavior)
-        # Minimal synthetic user message to satisfy Kiro API's "first message must be user" requirement
+        # Minimal synthetic user message to satisfy Kiro API's "first message must be user" requirement.
+        # Use "." as content (not a directive prompt) so the model doesn't interpret it as an instruction.
         synthetic_user = UnifiedMessage(
             role="user",
-            content="请继续你的工作，如果已经完成，请简单汇报结果"
+            content="."
         )
         
         return [synthetic_user] + messages
@@ -1285,7 +1285,7 @@ def ensure_alternating_roles(messages: List[UnifiedMessage]) -> List[UnifiedMess
         >>> result[1].role
         'assistant'
         >>> result[1].content
-        '(empty placeholder)'
+        'Understood.'
     """
     if not messages or len(messages) < 2:
         return messages
@@ -1298,9 +1298,11 @@ def ensure_alternating_roles(messages: List[UnifiedMessage]) -> List[UnifiedMess
         
         # If both current and previous are user → insert synthetic assistant
         if msg.role == "user" and prev_role == "user":
+            # "Understood." as a neutral acknowledgment; not a directive that would
+            # cause the model to keep "responding" to this synthetic message in later turns.
             synthetic_assistant = UnifiedMessage(
                 role="assistant",
-                content="请继续你的工作，如果已经完成，请简单汇报结果"
+                content="Understood."
             )
             result.append(synthetic_assistant)
             synthetic_count += 1
@@ -1496,25 +1498,27 @@ def build_kiro_payload(
     current_content = extract_text_content(current_message.content)
     
     # If current message has tool_results but no text content,
-    # allow empty content so Kiro API receives the tool results without
-    # synthetic prompt interference. Real Kiro IDE traffic uses content=""
-    # in this exact case and the model responds based on toolResults context.
+    # use "." as minimal content. Real Kiro IDE traffic uses content=""; we use "." here
+    # so the model isn't led to respond to a directive placeholder while tool_results
+    # carry the actual context for this turn.
     if not current_content and current_message.tool_results:
-        current_content = ""
+        current_content = "."
     
     # If system prompt exists but history is empty - add to current message
     if full_system_prompt and not history:
         current_content = f"{full_system_prompt}\n\n{current_content}"
     
     # If current message is assistant, need to add it to history
-    # and create user message placeholder
+    # and create user message placeholder. Use "." so the model doesn't interpret
+    # the placeholder as a directive (which historically caused infinite "respond
+    # to placeholder" loops in multi-turn conversations).
     if current_message.role == "assistant":
         history.append({
             "assistantResponseMessage": {
                 "content": current_content
             }
         })
-        current_content = "请继续你的工作，如果已经完成，请简单汇报结果"
+        current_content = "."
     
     # Content may be empty (e.g., tool-only messages) - Kiro API should accept this
     # If not, we'll get a clear error to debug
