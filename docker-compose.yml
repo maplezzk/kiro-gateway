@@ -76,4 +76,5 @@ services:
 
 networks:
   default:
-    name: kiro-gateway-network
+    # No hardcoded name: each project gets its own auto-named network so
+    # multiple instances (zzk, kidd, ...) can coexist without collision.
