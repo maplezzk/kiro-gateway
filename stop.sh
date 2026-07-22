@@ -62,6 +62,10 @@ while [[ $# -gt 0 ]]; do
                 echo "❌ 多次指定参数: $1"
                 exit 1
             fi
+            # 点开头的名字（.env 等）不合法，映射为 default
+            if [[ "$PROJECT_NAME" == .* ]]; then
+                PROJECT_NAME="default"
+            fi
             shift
             ;;
     esac
