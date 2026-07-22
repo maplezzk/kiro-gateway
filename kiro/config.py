@@ -462,17 +462,17 @@ def _warn_timeout_configuration():
 # with <thinking>...</thinking> blocks that we parse and convert to reasoning_content.
 # It works great, but it's a hack - hence "fake" reasoning.
 #
-# Default: false (disabled) - aligns with the transparent proxy principle.
-# Fake reasoning is a prompt-injection workaround and should be opt-in, not on by default.
-# Set FAKE_REASONING=true to enable.
-_FAKE_REASONING_RAW: str = os.getenv("FAKE_REASONING", "false").lower()
-# Default is False - opt-in. Only enable when env var explicitly says so.
-FAKE_REASONING_ENABLED: bool = _FAKE_REASONING_RAW in (
-    "true",
-    "1",
-    "yes",
-    "enabled",
-    "on",
+# Default: true (enabled). Fake reasoning provides the thinking experience out of
+# the box; users who want native-only behavior can set FAKE_REASONING=false in their
+# .env to disable the prompt-injection workaround.
+_FAKE_REASONING_RAW: str = os.getenv("FAKE_REASONING", "true").lower()
+# Default is True - enabled unless env var explicitly disables it.
+FAKE_REASONING_ENABLED: bool = _FAKE_REASONING_RAW not in (
+    "false",
+    "0",
+    "no",
+    "disabled",
+    "off",
 )
 
 # Maximum thinking length in tokens (default budget when client doesn't specify).
