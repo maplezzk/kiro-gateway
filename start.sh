@@ -99,6 +99,7 @@ rm -f "$OVERRIDE_FILE"
 cat > "$OVERRIDE_FILE" <<EOF
 services:
   kiro-gateway:
+    container_name: kiro-gateway-${PROJECT_NAME}
     env_file:
       - $ENV_FILE
 EOF
