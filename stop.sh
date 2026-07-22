@@ -75,7 +75,7 @@ if [ "$STOP_ALL" = true ]; then
         [ -f "$override" ] || continue
         project=$(basename "$override" .yml | sed 's/^\.docker-compose\.override\.//')
         echo "  - $project"
-        docker-compose -p "$project" -f docker-compose.yml -f "$override" down 2>/dev/null || true
+        docker-compose -p "kiro-gateway-${project}" -f docker-compose.yml -f "$override" down 2>/dev/null || true
         rm -f "$override"
     done
     # 兜底: 直接停掉所有 kiro-gateway 容器
@@ -125,7 +125,7 @@ if [ -f "$OVERRIDE_FILE" ]; then
     COMPOSE_FILES+=("-f" "$OVERRIDE_FILE")
 fi
 
-docker-compose -p "$PROJECT_NAME" "${COMPOSE_FILES[@]}" down
+docker-compose -p "kiro-gateway-${PROJECT_NAME}" "${COMPOSE_FILES[@]}" down
 
 # 跑完 down 后清理 override 文件
 rm -f "$OVERRIDE_FILE"

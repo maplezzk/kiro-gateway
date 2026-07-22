@@ -135,7 +135,7 @@ set +a
 
 # 启动容器（指定项目名 + override 文件）
 echo "🏗️  构建并启动容器...（每次强制重建镜像以使用最新代码）"
-docker-compose -p "$PROJECT_NAME" -f docker-compose.yml -f "$OVERRIDE_FILE" up -d --build
+docker-compose -p "kiro-gateway-${PROJECT_NAME}" -f docker-compose.yml -f "$OVERRIDE_FILE" up -d --build
 
 # 等待健康检查通过
 echo "⏳ 等待服务就绪（端口 $SERVER_PORT）..."
@@ -147,11 +147,11 @@ for i in $(seq 1 15); do
         echo "   🏷️  项目: $PROJECT_NAME"
         echo "   🔑 API Key: $(grep "^PROXY_API_KEY=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"')"
         echo "   📋 模型列表: curl -H \"Authorization: Bearer \$(grep ^PROXY_API_KEY= $ENV_FILE | cut -d'=' -f2 | tr -d '\"')\" http://localhost:$SERVER_PORT/v1/models"
-        echo "   📜 查看日志: docker-compose -p $PROJECT_NAME logs -f"
+        echo "   📜 查看日志: docker-compose -p kiro-gateway-$PROJECT_NAME logs -f"
         exit 0
     fi
     sleep 1
 done
 
-echo "❌ 服务启动超时，请查看日志: docker-compose -p $PROJECT_NAME logs -f"
+echo "❌ 服务启动超时，请查看日志: docker-compose -p kiro-gateway-$PROJECT_NAME logs -f"
 exit 1
