@@ -78,8 +78,14 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 # 自动生成项目名（用 env 文件的 basename 去后缀）
+# 默认 .env 会得到点开头的 "env"，不合法。统一处理为 "default"
 if [ -z "$PROJECT_NAME" ]; then
-    PROJECT_NAME=$(basename "$ENV_FILE" .env)
+    RAW_NAME=$(basename "$ENV_FILE" .env)
+    if [ -z "$RAW_NAME" ] || [ "$RAW_NAME" = "." ] || [[ "$RAW_NAME" == .* ]]; then
+        PROJECT_NAME="default"
+    else
+        PROJECT_NAME="$RAW_NAME"
+    fi
 fi
 
 # 读取 SERVER_PORT 用于健康检查
