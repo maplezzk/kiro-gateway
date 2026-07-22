@@ -109,15 +109,20 @@ if [ -n "$CREDS_FILE" ]; then
     # KIRO_SSO_CACHE_HOST_DIR 是宿主机上的凭证目录，默认 ${HOME}/.aws/sso/cache
     SSO_HOST_DIR=$(grep "^KIRO_SSO_CACHE_HOST_DIR=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"')
     SSO_HOST_DIR="${SSO_HOST_DIR:-$HOME/.aws/sso/cache}"
-    # 从 KIRO_CREDS_FILE 提取文件名（容器里 /home/kiro/... 换到宿主机 SSO_HOST_DIR/...）
-    CREDS_FILENAME=$(basename "$CREDS_FILE")
-    LOCAL_CREDS="$SSO_HOST_DIR/$CREDS_FILENAME"
+    # 从容器路径 /home/kiro/... 推导出宿主路径
+    LOCAL_CREDS="${CREDS_FILE/\/home\/kiro/$SSO_HOST_DIR}"
     if [ ! -f "$LOCAL_CREDS" ]; then
         echo "❌ 未找到凭证文件: $LOCAL_CREDS"
         echo "   请确认 Kiro IDE 已登录并生成凭证文件"
+        echo "   或检查 KIRO_SSO_CACHE_HOST_DIR 是否指向了正确的宿主目录"
         exit 1
     fi
     echo "✅ 凭证文件已找到: $LOCAL_CREDS"
+else
+    echo "⚠️  未设置 KIRO_CREDS_FILE，容器启动后可能会报 'No Kiro credentials configured'"
+    echo "   推荐在 $ENV_FILE 中加入："
+    echo "     KIRO_CREDS_FILE=\"/home/kiro/.aws/sso/cache/kiro-auth-token.json\""
+    echo "   (搭配 KIRO_SSO_CACHE_HOST_DIR 或默认 ~/.aws/sso/cache)"
 fi
 
 # Source env 文件，让 docker-compose.yml 里的 ${VAR:-default} 替换能拿到正确的值

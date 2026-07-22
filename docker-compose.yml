@@ -25,7 +25,9 @@ services:
       - PROFILE_ARN=${PROFILE_ARN:-}
       
       # Option 3: Credentials file path (mounted as volume below)
-      - KIRO_CREDS_FILE=${KIRO_CREDS_FILE:-}
+      # Default: the standard Kiro IDE credential file inside the container.
+      # The matching host directory is ${KIRO_SSO_CACHE_HOST_DIR:-~/.aws/sso/cache}.
+      - KIRO_CREDS_FILE=${KIRO_CREDS_FILE:-/home/kiro/.aws/sso/cache/kiro-auth-token.json}
       
       # Option 4: kiro-cli SQLite database (mounted as volume below)
       - KIRO_CLI_DB_FILE=${KIRO_CLI_DB_FILE:-}
