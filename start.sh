@@ -93,16 +93,15 @@ echo "🔌 端口: $SERVER_PORT"
 
 # 生成 docker-compose override 文件，指定自定义 env_file
 # 这样不会动 .env，每个实例独立
+# 不要用 trap 删除: stop.sh 跑 docker-compose down 时还需要这个文件
 OVERRIDE_FILE="$SCRIPT_DIR/.docker-compose.override.${PROJECT_NAME}.yml"
+rm -f "$OVERRIDE_FILE"
 cat > "$OVERRIDE_FILE" <<EOF
 services:
   kiro-gateway:
     env_file:
       - $ENV_FILE
 EOF
-
-# 确保退出时清理 override 文件
-trap 'rm -f "$OVERRIDE_FILE"' EXIT
 
 # 检查凭证文件（如果配置了 KIRO_CREDS_FILE）
 CREDS_FILE=$(grep "^KIRO_CREDS_FILE=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"')
