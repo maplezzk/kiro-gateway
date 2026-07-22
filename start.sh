@@ -107,7 +107,12 @@ trap 'rm -f "$OVERRIDE_FILE"' EXIT
 # 检查凭证文件（如果配置了 KIRO_CREDS_FILE）
 CREDS_FILE=$(grep "^KIRO_CREDS_FILE=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"')
 if [ -n "$CREDS_FILE" ]; then
-    LOCAL_CREDS="${CREDS_FILE/\/home\/kiro/$HOME}"
+    # KIRO_SSO_CACHE_HOST_DIR 是宿主机上的凭证目录，默认 ${HOME}/.aws/sso/cache
+    SSO_HOST_DIR=$(grep "^KIRO_SSO_CACHE_HOST_DIR=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"')
+    SSO_HOST_DIR="${SSO_HOST_DIR:-$HOME/.aws/sso/cache}"
+    # 从 KIRO_CREDS_FILE 提取文件名（容器里 /home/kiro/... 换到宿主机 SSO_HOST_DIR/...）
+    CREDS_FILENAME=$(basename "$CREDS_FILE")
+    LOCAL_CREDS="$SSO_HOST_DIR/$CREDS_FILENAME"
     if [ ! -f "$LOCAL_CREDS" ]; then
         echo "❌ 未找到凭证文件: $LOCAL_CREDS"
         echo "   请确认 Kiro IDE 已登录并生成凭证文件"
@@ -115,6 +120,13 @@ if [ -n "$CREDS_FILE" ]; then
     fi
     echo "✅ 凭证文件已找到: $LOCAL_CREDS"
 fi
+
+# Source env 文件，让 docker-compose.yml 里的 ${VAR:-default} 替换能拿到正确的值
+# （不 source 的话，所有变量会 fallback 到默认值，与 env_file 加载的运行时值冲突）
+set -a
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+set +a
 
 # 启动容器（指定项目名 + override 文件）
 echo "🏗️  构建并启动容器...（每次强制重建镜像以使用最新代码）"
