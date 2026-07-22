@@ -140,9 +140,14 @@ async def parse_kiro_stream(
     parser = AwsEventStreamParser()
     first_token_received = False
     
-    # Initialize thinking parser if fake reasoning is enabled
+    # Initialize thinking parser.
+    # The parser extracts thinking blocks from the response stream regardless of
+    # whether we inject fake reasoning on the request side. These are independent
+    # concerns: FAKE_REASONING_ENABLED controls outbound injection (in
+    # converters_core.inject_thinking_tags), while thinking extraction should
+    # always run so real thinking returned by the model is surfaced to the client.
     thinking_parser: Optional[ThinkingParser] = None
-    if FAKE_REASONING_ENABLED and enable_thinking_parser:
+    if enable_thinking_parser:
         thinking_parser = ThinkingParser(handling_mode=FAKE_REASONING_HANDLING)
         logger.debug(f"Thinking parser initialized with mode: {FAKE_REASONING_HANDLING}")
     

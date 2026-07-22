@@ -1091,12 +1091,16 @@ class TestThinkingParserIntegration:
         print("✓ Thinking parser enabled when fake reasoning is on")
     
     @pytest.mark.asyncio
-    async def test_thinking_parser_disabled_when_fake_reasoning_off(self, mock_response, mock_parser):
+    async def test_thinking_parser_enabled_when_fake_reasoning_off(self, mock_response, mock_parser):
         """
-        What it does: Disables thinking parser when FAKE_REASONING_ENABLED is False.
-        Goal: Verify thinking parser is not created.
+        What it does: Confirms the thinking parser still runs when FAKE_REASONING_ENABLED is False.
+        Goal: Protect against regression of the bug where disabling FAKE_REASONING also
+              suppressed extraction of real thinking blocks from the response. Extraction
+              (streaming side) and injection (request side) are independent concerns:
+              the parser should run whenever enable_thinking_parser=True, regardless of
+              whether outbound fake-reasoning injection is enabled.
         """
-        print("Setup: Disable fake reasoning...")
+        print("Setup: Disable fake reasoning but keep thinking parser active...")
         mock_parser.feed.return_value = [{"type": "content", "data": "Hello"}]
         mock_parser.get_tool_calls.return_value = []
         
@@ -1105,7 +1109,7 @@ class TestThinkingParserIntegration:
         
         mock_response.aiter_bytes = mock_aiter_bytes
         
-        print("Action: Parsing stream with fake reasoning disabled...")
+        print("Action: Parsing stream with FAKE_REASONING_ENABLED=False...")
         events = []
         
         with patch('kiro.streaming_core.AwsEventStreamParser', return_value=mock_parser):
@@ -1114,10 +1118,10 @@ class TestThinkingParserIntegration:
                     async for event in parse_kiro_stream(mock_response, first_token_timeout=30):
                         events.append(event)
                     
-                    # Verify ThinkingParser was NOT instantiated
-                    mock_thinking_parser_class.assert_not_called()
+                    # Thinking parser SHOULD be instantiated regardless of FAKE_REASONING_ENABLED
+                    mock_thinking_parser_class.assert_called_once()
         
-        print("✓ Thinking parser disabled when fake reasoning is off")
+        print("✓ Thinking parser stays enabled even when fake reasoning is off")
     
     @pytest.mark.asyncio
     async def test_thinking_parser_can_be_disabled_via_parameter(self, mock_response, mock_parser):
