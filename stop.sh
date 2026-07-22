@@ -74,6 +74,8 @@ if [ "$STOP_ALL" = true ]; then
     for override in "$SCRIPT_DIR"/.docker-compose.override.*.yml; do
         [ -f "$override" ] || continue
         project=$(basename "$override" .yml | sed 's/^\.docker-compose\.override\.//')
+        # 跳过以点开头的（历史残留），避免 kiro-gateway-.env 这种非法项目名
+        [[ "$project" == .* ]] && continue
         echo "  - $project"
         docker-compose -p "kiro-gateway-${project}" -f docker-compose.yml -f "$override" down 2>/dev/null || true
         rm -f "$override"
@@ -104,7 +106,13 @@ if [ -n "$ENV_FILE" ] && [ -z "$PROJECT_NAME" ]; then
     if [[ "$ENV_FILE" != /* ]]; then
         ENV_FILE="$SCRIPT_DIR/$ENV_FILE"
     fi
-    PROJECT_NAME=$(basename "$ENV_FILE" .env)
+    # 默认 .env 会得到点开头的 "env"，不合法。统一处理为 "default"
+    RAW_NAME=$(basename "$ENV_FILE" .env)
+    if [ -z "$RAW_NAME" ] || [ "$RAW_NAME" = "." ] || [[ "$RAW_NAME" == .* ]]; then
+        PROJECT_NAME="default"
+    else
+        PROJECT_NAME="$RAW_NAME"
+    fi
 fi
 
 echo "🛑 停止实例: $PROJECT_NAME"

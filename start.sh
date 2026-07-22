@@ -102,6 +102,8 @@ echo "🔌 端口: $SERVER_PORT"
 # 不要用 trap 删除: stop.sh 跑 docker-compose down 时还需要这个文件
 OVERRIDE_FILE="$SCRIPT_DIR/.docker-compose.override.${PROJECT_NAME}.yml"
 rm -f "$OVERRIDE_FILE"
+# 清理历史残留的以点开头的 override 文件（修复 .env 路径 bug 前的产物）
+find "$SCRIPT_DIR" -maxdepth 1 -name '.docker-compose.override..*.yml' -delete 2>/dev/null || true
 cat > "$OVERRIDE_FILE" <<EOF
 services:
   kiro-gateway:
