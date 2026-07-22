@@ -452,18 +452,68 @@ class TestAwsEventStreamParserFeed:
         Goal: Ensure identical content is not duplicated.
         """
         print("Setup: Chunks with repeated content...")
-        
+
         print("Action: Parsing first chunk...")
         events1 = aws_event_parser.feed(b'{"content":"Same"}')
-        
+
         print("Action: Parsing second chunk with same content...")
         events2 = aws_event_parser.feed(b'{"content":"Same"}')
-        
+
         print(f"First result: {events1}")
         print(f"Second result: {events2}")
         assert len(events1) == 1
         assert len(events2) == 0  # Duplicate filtered out
-    
+
+    def test_parses_reasoning_event(self, aws_event_parser):
+        """
+        What it does: Tests parsing of a single reasoning content event.
+        Goal: Ensure Kiro reasoningContentEvent frames (body {"text": "..."})
+              are extracted as reasoning events so streaming_core can surface
+              them as native thinking blocks to the OpenAI/Anthropic clients.
+        """
+        print("Setup: Chunk with reasoning text...")
+        chunk = b'{"text":"Let me think about this..."}'
+
+        print("Action: Parsing chunk...")
+        events = aws_event_parser.feed(chunk)
+
+        print(f"Result: {events}")
+        assert len(events) == 1
+        assert events[0]["type"] == "reasoning"
+        assert events[0]["data"] == "Let me think about this..."
+
+    def test_parses_multiple_reasoning_chunks(self, aws_event_parser):
+        """
+        What it does: Tests parsing of multiple reasoning chunks.
+        Goal: Ensure each Kiro reasoning content delta is emitted as its own
+              reasoning event without losing intermediate chunks.
+        """
+        print("Setup: Chunk with multiple reasoning events...")
+        chunk = b'{"text":"First "}{"text":"Second "}{"text":"Third"}'
+
+        print("Action: Parsing chunk...")
+        events = aws_event_parser.feed(chunk)
+
+        print(f"Result: {events}")
+        assert len(events) == 3
+        assert [e["type"] for e in events] == ["reasoning", "reasoning", "reasoning"]
+        assert [e["data"] for e in events] == ["First ", "Second ", "Third"]
+
+    def test_reasoning_event_skipped_when_empty(self, aws_event_parser):
+        """
+        What it does: Tests that empty reasoning payloads are dropped.
+        Goal: Ensure empty {"text": ""} frames don't yield empty thinking
+              deltas that would confuse downstream streaming code.
+        """
+        print("Setup: Chunk with empty reasoning text...")
+        chunk = b'{"text":""}'
+
+        print("Action: Parsing chunk...")
+        events = aws_event_parser.feed(chunk)
+
+        print(f"Result: {events}")
+        assert events == []
+
     def test_parses_usage_event(self, aws_event_parser):
         """
         What it does: Tests parsing of usage event.

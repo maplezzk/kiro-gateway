@@ -606,18 +606,46 @@ class TestProcessChunk:
             {"type": "content", "data": " World"},
             {"type": "usage", "data": {"credits": 0.001}}
         ]
-        
+
         print("Action: Processing chunk...")
         events = []
         async for event in _process_chunk(mock_parser, b'chunk', None):
             events.append(event)
-        
+
         print(f"Received {len(events)} events")
         assert len(events) == 3
         assert events[0].type == "content"
         assert events[1].type == "content"
         assert events[2].type == "usage"
         print("✓ Multiple events processed correctly")
+
+    @pytest.mark.asyncio
+    async def test_reasoning_event_becomes_thinking_event(self, mock_parser):
+        """
+        What it does: Surfaces a parser reasoning event as a KiroEvent thinking chunk.
+        Goal: Cover the wiring that turns Kiro's reasoningContentEvent frames
+              (body {"text": "..."}) into KiroEvent(type="thinking") so the
+              Anthropic/OpenAI adapters can emit native thinking blocks. This
+              is the regression target: the parser used to ignore reasoning
+              events entirely, so thinking content was silently dropped.
+        """
+        print("Setup: Mock parser with a reasoning event...")
+        mock_parser.feed.return_value = [
+            {"type": "reasoning", "data": "Let me consider"},
+            {"type": "reasoning", "data": " the options."},
+        ]
+
+        print("Action: Processing chunk without thinking_parser...")
+        events = []
+        async for event in _process_chunk(mock_parser, b'chunk', None):
+            events.append(event)
+
+        print(f"Received {len(events)} events")
+        assert len(events) == 2
+        assert all(e.type == "thinking" for e in events)
+        assert events[0].thinking_content == "Let me consider"
+        assert events[1].thinking_content == " the options."
+        print("✓ Reasoning events flow through as thinking events")
     
     @pytest.mark.asyncio
     async def test_processes_with_thinking_parser(self, mock_parser):

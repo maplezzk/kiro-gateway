@@ -282,9 +282,17 @@ async def _process_chunk(
         
         elif event["type"] == "usage":
             yield KiroEvent(type="usage", usage=event["data"])
-        
+
         elif event["type"] == "context_usage":
             yield KiroEvent(type="context_usage", context_usage_percentage=event["data"])
+
+        elif event["type"] == "reasoning":
+            # Native Kiro reasoning stream events (from reasoningContentEvent frames).
+            # Surface each chunk as its own thinking event so OpenAI/Anthropic
+            # adapters can emit extended-thinking blocks; the adapters rebuild
+            # the first/last chunk markers by tracking whether any prior content
+            # or thinking has been emitted for the current request.
+            yield KiroEvent(type="thinking", thinking_content=event["data"])
 
 
 # ==================================================================================================

@@ -238,15 +238,19 @@ class AwsEventStreamParser:
     """
     
     # Patterns for finding JSON events
+    # Order matters only when two patterns could match the same position;
+    # in practice each event-type uses a distinct starting field so they're
+    # unambiguous in real AWS event-stream payloads.
     EVENT_PATTERNS = [
         ('{"content":', 'content'),
+        ('{"text":', 'reasoning'),
         ('{"name":', 'tool_start'),
         ('{"input":', 'tool_input'),
         ('{"stop":', 'tool_stop'),
         ('{"followupPrompt":', 'followup'),
         ('{"usage":', 'usage'),
         ('{"contextUsagePercentage":', 'context_usage'),
-    ]
+    ]  
     
     def __init__(self):
         """Initializes the parser."""
@@ -328,8 +332,25 @@ class AwsEventStreamParser:
             return {"type": "usage", "data": data.get('usage', 0)}
         elif event_type == 'context_usage':
             return {"type": "context_usage", "data": data.get('contextUsagePercentage', 0)}
-        
+        elif event_type == 'reasoning':
+            return self._process_reasoning_event(data)
+
         return None
+
+    def _process_reasoning_event(self, data: dict) -> Optional[Dict[str, Any]]:
+        """
+        Processes a reasoning content event.
+
+        The Kiro API streams extended-thinking / reasoning content as separate
+        ``reasoningContentEvent`` frames with a body of the form
+        ``{"text": "<chunk>"}``. We surface each chunk as its own ``reasoning``
+        event; ``streaming_core`` then forwards them as ``KiroEvent(type="thinking")``
+        so the OpenAI/Anthropic adapters can emit native thinking blocks.
+        """
+        text = data.get('text', '')
+        if not text:
+            return None
+        return {"type": "reasoning", "data": text}
     
     def _process_content_event(self, data: dict) -> Optional[Dict[str, Any]]:
         """Processes content event."""
