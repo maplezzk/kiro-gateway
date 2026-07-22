@@ -110,8 +110,11 @@ if [ -n "$CREDS_FILE" ]; then
     # KIRO_SSO_CACHE_HOST_DIR 是宿主机上的凭证目录，默认 ${HOME}/.aws/sso/cache
     SSO_HOST_DIR=$(grep "^KIRO_SSO_CACHE_HOST_DIR=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"')
     SSO_HOST_DIR="${SSO_HOST_DIR:-$HOME/.aws/sso/cache}"
-    # 从容器路径 /home/kiro/... 推导出宿主路径
-    LOCAL_CREDS="${CREDS_FILE/\/home\/kiro/$SSO_HOST_DIR}"
+    # 取容器路径里的文件名，拼到宿主机 SSO 目录后面
+    # 不能用 ${VAR/pattern/replace}: bash 只替换第一个匹配，
+    # 会留下剩余的 /.aws/sso/cache 段，导致路径重复
+    CREDS_FILENAME=$(basename "$CREDS_FILE")
+    LOCAL_CREDS="$SSO_HOST_DIR/$CREDS_FILENAME"
     if [ ! -f "$LOCAL_CREDS" ]; then
         echo "❌ 未找到凭证文件: $LOCAL_CREDS"
         echo "   请确认 Kiro IDE 已登录并生成凭证文件"
