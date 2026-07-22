@@ -66,7 +66,9 @@ echo "📄 配置文件: $ENV_FILE"
 # 如果指定了自定义配置，链接到 .env（docker-compose 默认读取 .env）
 if [ "$ENV_FILE" != "$SCRIPT_DIR/.env" ]; then
     if [ -e "$SCRIPT_DIR/.env" ] && [ ! -L "$SCRIPT_DIR/.env" ]; then
-        echo "⚠️  现有 .env 不是符号链接，将被覆盖"
+        BACKUP_FILE="$SCRIPT_DIR/.env.backup.$(date +%Y%m%d_%H%M%S)"
+        cp -p "$SCRIPT_DIR/.env" "$BACKUP_FILE"
+        echo "⚠️  现有 .env 已备份为: $(basename "$BACKUP_FILE")"
     fi
     ln -sf "$ENV_FILE" "$SCRIPT_DIR/.env"
     echo "🔗 已链接 $ENV_FILE -> .env"
