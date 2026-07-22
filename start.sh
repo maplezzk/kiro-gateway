@@ -1,6 +1,6 @@
 #!/bin/bash
 # Kiro Gateway - 启动脚本
-# 用法: ./start.sh [--env <文件路径>] [--project <名称>]
+# 用法: ./start.sh [名称 | --env <文件路径>] [--project <名称>]
 
 set -e
 
@@ -21,21 +21,24 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --help|-h)
-            echo "用法: $0 [--env <文件路径>] [--project <名称>]"
+            echo "用法: $0 [名称 | --env <文件路径>] [--project <名称>]"
+            echo ""
+            echo "简写:"
+            echo "  $0 <名称>              等价于 envs/<名称>/<名称>.env + project=<名称>"
             echo ""
             echo "选项:"
             echo "  --env, -e <path>       指定配置文件路径（默认: .env）"
-            echo "  --project, -p <name>   指定 docker-compose 项目名（用于多实例）"
+            echo "  --project, -p <name>   指定 docker-compose 项目名（默认从配置名推导）"
             echo "  --name, -n <name>      同 --project"
             echo "  --help, -h             显示帮助"
             echo ""
             echo "示例:"
-            echo "  $0"
-            echo "  $0 --env envs/zzk/zzk.env --project zzk"
-            echo "  $0 --env envs/kidd/kidd.env --project kidd"
+            echo "  $0                     # 使用默认 .env"
+            echo "  $0 zzk                 # 使用 envs/zzk/zzk.env"
+            echo "  $0 kidd                # 使用 envs/kidd/kidd.env"
+            echo "  $0 --env .env.production"
             echo ""
-            echo "多实例: 每个实例需要不同的 SERVER_PORT 和不同的 --project 名称"
-            echo "默认项目名 = 配置文件 basename（去掉 .env 后缀）"
+            echo "多实例: 每个实例需要不同的 SERVER_PORT 和不同的项目名"
             exit 0
             ;;
         -*)
@@ -44,8 +47,14 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
         *)
+            # 简写: 第一个位置参数优先当作名称
             if [ -z "$ENV_FILE" ]; then
-                ENV_FILE="$1"
+                if [ -f "$SCRIPT_DIR/envs/$1/$1.env" ]; then
+                    ENV_FILE="$SCRIPT_DIR/envs/$1/$1.env"
+                    [ -z "$PROJECT_NAME" ] && PROJECT_NAME="$1"
+                else
+                    ENV_FILE="$1"
+                fi
             else
                 echo "❌ 多次指定参数: $1"
                 exit 1
