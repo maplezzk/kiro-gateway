@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: kiro-gateway
+    image: kiro-gateway:latest
     ports:
       - "${SERVER_PORT:-8000}:${SERVER_PORT:-8000}"
     environment:
