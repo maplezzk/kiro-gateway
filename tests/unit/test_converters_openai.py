@@ -847,10 +847,13 @@ class TestBuildKiroPayload:
         assert len(context["tools"]) == 1
         assert context["tools"][0]["toolSpecification"]["name"] == "get_weather"
     
-    def test_injects_thinking_tags_even_when_tool_results_present(self):
+    def test_skips_thinking_tags_when_content_is_synthetic_placeholder(self):
         """
-        What it does: Verifies thinking tags ARE injected even when toolResults are present.
-        Purpose: Extended thinking should work in all scenarios including tool use flows.
+        What it does: Verifies thinking tags are NOT injected when current content
+                      is a synthetic placeholder (".") from tool_results-only turns.
+        Purpose: When there's no real user question, injecting thinking tags causes
+                 models to respond to the control tags themselves (e.g., outputting
+                 "已进入扩展思考模式" instead of processing tool results).
         """
         print("Setup: Request where last message is a tool result...")
         request = ChatCompletionRequest(
@@ -868,7 +871,6 @@ class TestBuildKiroPayload:
                 ),
                 ChatMessage(role="tool", content="Command output here", tool_call_id="tool_1"),
             ],
-            # Tools must be defined for tool_results to be preserved
             tools=[
                 Tool(
                     type="function",
@@ -880,22 +882,27 @@ class TestBuildKiroPayload:
                 )
             ]
         )
-        
+
         print("Action: Building payload with FAKE_REASONING_ENABLED=True...")
         with patch('kiro.converters_core.FAKE_REASONING_ENABLED', True):
             with patch('kiro.converters_core.FAKE_REASONING_MAX_TOKENS', 4000):
                 result = build_kiro_payload(request, "conv-123", "")
-        
+
         current_msg = result["conversationState"]["currentMessage"]["userInputMessage"]
         content = current_msg["content"]
         context = current_msg.get("userInputMessageContext", {})
-        
-        print(f"Content: {repr(content[:100] if len(content) > 100 else content)}")
+
+        print(f"Content: {repr(content)}")
         print(f"Has toolResults: {'toolResults' in context}")
-        
+
         assert "toolResults" in context, "toolResults should be present"
-        assert "<thinking_mode>enabled</thinking_mode>" in content, "thinking tags SHOULD be injected even with toolResults"
-        assert "<max_thinking_length>4000</max_thinking_length>" in content, "max_thinking_length should be present"
+        # Thinking tags must NOT be injected when content is just a placeholder.
+        # Models respond to the control tags (e.g., "已进入扩展思考模式") instead of
+        # processing tool results when there's no real user question.
+        assert "<thinking_mode>" not in content, (
+            "thinking tags should NOT be injected when content is a synthetic placeholder"
+        )
+        assert content == ".", f"Content should remain as placeholder '.', got {content!r}"
     
     def test_injects_thinking_tags_when_no_tool_results(self):
         """

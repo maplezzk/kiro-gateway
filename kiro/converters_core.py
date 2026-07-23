@@ -1554,7 +1554,10 @@ def build_kiro_payload(
             user_input_context["toolResults"] = tool_results
     
     # Inject thinking tags if enabled (only for the current/last user message)
-    if current_message.role == "user":
+    # Skip injection when content is a synthetic placeholder (".") — there's no real
+    # user question to reason about, and models respond to the control tags themselves
+    # (e.g., outputting "已进入扩展思考模式" as their answer).
+    if current_message.role == "user" and current_content not in (".", ""):
         current_content = inject_thinking_tags(current_content, thinking_config)
     
     # Build userInputMessage
